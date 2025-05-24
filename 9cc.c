@@ -22,10 +22,17 @@ struct Token {
 
 Token *token;
 
+char *user_input;
+
 // errorを報告する関数
-void error(char *fmt, ...){
+void error_at(char *loc, char *fmt, ...){
   va_list ap;
   va_start(ap, fmt);
+
+  int pos = loc - user_input;
+  fprintf(stderr, "%s\n", user_input);
+  fprintf(stderr, "%*s", pos, " ");
+  fprintf(stderr, "^ ");
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
   exit(1);
@@ -39,10 +46,16 @@ bool consume(char op){
   return true;
 }
 
+void expect(char op) {
+  if (token->kind != TK_RESERVED || token->str[0] != op)
+    error_at(token->str, "expected '%c'", op);
+  token = token->next;
+}
+
 // 数値の場合、読み進める
 int expect_number() {
   if (token->kind != TK_NUM)
-    error("it is not number");
+    error_at(token->str, "expected a number");
   int val = token->val;
   token = token->next;
   return val;
@@ -60,8 +73,9 @@ Token *new_token(TokenKind kind, Token *cur, char *str) {
   return tok;
 }
 
-Token *tokenize(char *p) {
+Token *tokenize() {
   Token head;
+  char *p = user_input;
   head.next = NULL;
   Token *cur = &head;
 
@@ -81,7 +95,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    error("Tokeninzing is not enable");
+    error_at(p, "expected a number");
   }
    new_token(TK_EOF, cur, p);
    return head.next;
@@ -93,7 +107,8 @@ int main(int argc, char **argv){
     return 1;
   }
 
-  token = tokenize(argv[1]);
+  user_input = argv[1];
+  token = tokenize();
 
   printf(".intel_syntax noprefix\n");
   printf(".globl main\n");
